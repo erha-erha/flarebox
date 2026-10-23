@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  // Worker 名称。如果改了这里，请在 FlareBox「设置 → 域名」里同步修改 Worker 名称
+  "name": "flarebox",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-15",
+  "observability": { "enabled": true },
+
+  // 前端单页应用；/api/* 交给 Worker 处理
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  // D1 数据库在首次部署时自动创建（无需手动填写 ID）
+  "d1_databases": [{ "binding": "DB", "database_name": "flarebox-db" }],
+
+  // 可选：开通 R2 后取消下面这行注释，附件和原始邮件会改存 R2（容量更大、更便宜）。
+  // 不开通 R2 时，附件以分块形式保存在 D1 中。
+  // "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "flarebox-mail" }],
+
+  // Cloudflare Email Service 发信绑定
+  "send_email": [{ "name": "EMAIL" }],
+
+  "vars": { "WORKER_NAME": "flarebox" },
+
+  // 每天清理回收站中超过 30 天的邮件
+  "triggers": { "crons": ["17 3 * * *"] }
+}

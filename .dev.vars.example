@@ -1,0 +1,3 @@
+# 管理员登录密码（可选）。
+# 使用「Deploy to Cloudflare」按钮部署时会提示你填写；留空则首次打开网页时再设置。
+ADMIN_PASSWORD=

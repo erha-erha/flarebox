@@ -1,0 +1,36 @@
+{
+  "name": "flarebox",
+  "private": true,
+  "version": "1.0.0",
+  "description": "FlareBox — 基于 Cloudflare 的自有域名邮箱：收信、发信、多域名统一管理",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite build && vite preview",
+    "deploy": "vite build && wrangler deploy",
+    "setup": "node scripts/setup.mjs",
+    "typecheck": "wrangler types worker/worker-configuration.d.ts && tsc -b",
+    "cf-typegen": "wrangler types worker/worker-configuration.d.ts"
+  },
+  "dependencies": {
+    "hono": "^4.13.13",
+    "lucide-react": "^1.61.0",
+    "postal-mime": "^4.1.4",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.65.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.5",
+    "wrangler": "^4.152.0"
+  },
+  "allowScripts": {
+    "workerd": true,
+    "esbuild": true
+  }
+}
