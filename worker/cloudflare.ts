@@ -203,14 +203,22 @@ export async function connectZone(
   return { steps, receiving: routingOk && catchAllOk, sending: sendingOk };
 }
 
-/** Turns the catch-all rule off so mail stops arriving at this Worker. DNS records are left in place. */
-export async function disconnectZone(token: string, zoneId: string): Promise<void> {
-  await cf(token, `/zones/${encodeURIComponent(zoneId)}/email/routing/rules/catch_all`, "PUT", {
+/**
+ * Turns the catch-all rule off so mail stops arriving at this Worker. DNS records are left in place.
+ * A catch-all that routes somewhere else (another Worker, a forward) is never touched.
+ */
+export async function disconnectZone(token: string, zoneId: string, workerName: string): Promise<boolean> {
+  const id = encodeURIComponent(zoneId);
+  const rule = await cf<CatchAllRule>(token, `/zones/${id}/email/routing/rules/catch_all`);
+  const ours = rule.actions.some((a) => a.type === "worker" && a.value?.[0] === workerName);
+  if (!ours) return false;
+  await cf(token, `/zones/${id}/email/routing/rules/catch_all`, "PUT", {
     name: "FlareBox catch-all (disabled)",
     enabled: false,
     matchers: [{ type: "all" }],
     actions: [{ type: "drop" }],
   });
+  return true;
 }
 
 /** Pre-filled "create API token" page in the Cloudflare dashboard. */

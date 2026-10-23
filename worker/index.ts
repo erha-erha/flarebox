@@ -415,7 +415,7 @@ app.delete("/domains/:id", async (c) => {
   let warning = "";
   if (domain.zone_id && token) {
     try {
-      await disconnectZone(token, domain.zone_id);
+      await disconnectZone(token, domain.zone_id, await workerName(c.env));
     } catch (e) {
       warning = `已从 FlareBox 移除，但关闭 Cloudflare Catch-all 失败：${(e as Error).message}`;
     }

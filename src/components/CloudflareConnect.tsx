@@ -89,9 +89,12 @@ export function CloudflareConnect({ settings, onChanged }: { settings: Settings;
   };
 
   const connect = async (z: ZoneInfo) => {
+    const currentCatchAll =
+      "description" in z.catchAll && !z.catchAll.toThisWorker && z.catchAll.description !== "未启用" ? z.catchAll.description : "";
     const ok = await confirm({
       title: `一键接入 ${z.name}`,
-      confirm: "开始接入",
+      confirm: currentCatchAll ? "仍然接入并替换" : "开始接入",
+      danger: !!currentCatchAll,
       body: (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <span>FlareBox 将自动完成：</span>
@@ -109,12 +112,22 @@ export function CloudflareConnect({ settings, onChanged }: { settings: Settings;
               开通 Cloudflare 发信（需要 Workers 付费计划）
             </div>
           </div>
-          <div className="callout warn">
-            <CircleAlert />
-            <span>
-              如果这个域名正在使用其它邮箱服务（如企业微信、腾讯企业邮、Google Workspace），接入后<strong>收信会切换到 FlareBox</strong>。
-            </span>
-          </div>
+          {currentCatchAll ? (
+            <div className="callout err">
+              <CircleAlert />
+              <span>
+                这个域名的 Catch-all 现在是<strong>「{currentCatchAll}」</strong>。接入后它会被替换为 FlareBox，原来的处理方式将<strong>不再收到</strong>
+                未单独设置规则的地址的邮件。如果只想让部分地址进入 FlareBox，请改为在 Cloudflare 为这些地址添加「发送到 Worker」规则，然后在下方「高级」中手动添加域名。
+              </span>
+            </div>
+          ) : (
+            <div className="callout warn">
+              <CircleAlert />
+              <span>
+                如果这个域名正在使用其它邮箱服务（如企业微信、腾讯企业邮、Google Workspace），接入后<strong>收信会切换到 FlareBox</strong>。
+              </span>
+            </div>
+          )}
         </div>
       ),
     });
