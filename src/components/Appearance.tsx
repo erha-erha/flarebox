@@ -8,22 +8,98 @@ export type Theme = "auto" | "light" | "dark";
 export interface Appearance {
   wallpaper: string;
   url: string;
-  /** opacity of the panes over the wallpaper, 30–100 (%) */
+  /** opacity of the panes over the wallpaper, 20–100 (%) */
   opacity: number;
   /** frosted-glass blur of the panes, 0–40 (px) */
   blur: number;
 }
 
-export const WALLPAPERS: { id: string; label: string }[] = [
-  { id: "sunset", label: "落日" },
-  { id: "aurora", label: "极光" },
-  { id: "mountains", label: "远山" },
-  { id: "ocean", label: "海浪" },
-  { id: "dawn", label: "晨曦" },
-  { id: "night", label: "星夜" },
-];
+interface Preset {
+  id: string;
+  label: string;
+  src: string;
+  thumb: string;
+}
+interface Category {
+  id: string;
+  label: string;
+  items: Preset[];
+}
 
-const DEFAULT: Appearance = { wallpaper: "none", url: "", opacity: 78, blur: 18 };
+const photo = (id: string, label: string): Preset => ({
+  id,
+  label,
+  src: `/wallpapers/photos/${id}.webp`,
+  thumb: `/wallpapers/thumbs/${id}.webp`,
+});
+const drawing = (id: string, label: string): Preset => ({ id, label, src: `/wallpapers/${id}.svg`, thumb: `/wallpapers/${id}.svg` });
+
+export const CATEGORIES: Category[] = [
+  {
+    id: "mountains",
+    label: "山川",
+    items: [
+      photo("cloud-sea", "云海"),
+      photo("snow-peak", "雪峰"),
+      photo("dusk-ridges", "暮山"),
+      photo("misty-hills", "远岱"),
+      photo("valley-river", "溪谷"),
+      photo("green-highland", "青峦"),
+    ],
+  },
+  {
+    id: "waters",
+    label: "湖海",
+    items: [
+      photo("moraine-lake", "湖光"),
+      photo("emerald-lake", "碧湖"),
+      photo("calm-lake", "静湖"),
+      photo("beach-sunrise", "海滩"),
+      photo("ocean-aerial", "海浪"),
+      photo("sea-cove", "海湾"),
+    ],
+  },
+  {
+    id: "sky",
+    label: "日月星辰",
+    items: [
+      photo("sunrise-meadow", "日出"),
+      photo("sunset-pier", "落日"),
+      photo("full-moon", "明月"),
+      photo("starry-mountain", "星空"),
+      photo("milky-way-lake", "银河"),
+      photo("aurora-forest", "极光"),
+    ],
+  },
+  {
+    id: "forest",
+    label: "森林原野",
+    items: [
+      photo("misty-forest", "雾林"),
+      photo("forest-path", "林间"),
+      photo("autumn-woods", "秋林"),
+      photo("lavender-field", "花海"),
+      photo("green-meadow", "绿野"),
+      photo("snowy-cabin", "雪原"),
+    ],
+  },
+  {
+    id: "drawings",
+    label: "插画",
+    items: [
+      drawing("sunset", "晚霞"),
+      drawing("aurora", "极光"),
+      drawing("mountains", "远山"),
+      drawing("ocean", "海浪"),
+      drawing("dawn", "晨曦"),
+      drawing("night", "星夜"),
+    ],
+  },
+];
+const PRESETS = new Map(CATEGORIES.flatMap((c) => c.items.map((p) => [p.id, p] as const)));
+const CUSTOM_TAB = "custom";
+
+const DEFAULT: Appearance = { wallpaper: "none", url: "", opacity: 62, blur: 16 };
 const KEY = "fb-appearance";
 const CUSTOM_KEY = "fb-wallpaper-custom";
 /** Longest edge of an uploaded image after downscaling. */
@@ -46,7 +122,6 @@ function loadCustom(): string {
   }
 }
 
-const presetUrl = (id: string) => `/wallpapers/${id}.svg`;
 const cssUrl = (src: string) => `url("${src.replace(/["\\]/g, "\\$&").replace(/[\r\n]/g, "")}")`;
 
 export function useAppearance() {
@@ -72,8 +147,7 @@ export function useAppearance() {
   };
 
   const { wallpaper } = appearance;
-  const src =
-    wallpaper === "custom" ? custom : wallpaper === "url" ? appearance.url : WALLPAPERS.some((w) => w.id === wallpaper) ? presetUrl(wallpaper) : "";
+  const src = wallpaper === "custom" ? custom : wallpaper === "url" ? appearance.url : (PRESETS.get(wallpaper)?.src ?? "");
 
   const style = src
     ? ({ "--pane-alpha": `${appearance.opacity}%`, "--glass-blur": `${appearance.blur}px` } as CSSProperties)
@@ -82,8 +156,24 @@ export function useAppearance() {
   return { appearance, setAppearance, custom, setCustom, src, style };
 }
 
+/** Full-screen backdrop; a new image fades in over the old one once it has loaded. */
 export function Wallpaper({ src }: { src: string }) {
-  return <div className="wallpaper" style={{ backgroundImage: cssUrl(src) }} aria-hidden />;
+  const [layers, setLayers] = useState({ current: src, previous: "" });
+  useEffect(() => {
+    let alive = true;
+    const img = new Image();
+    img.onload = img.onerror = () => alive && setLayers((l) => (l.current === src ? l : { current: src, previous: l.current }));
+    img.src = src;
+    return () => {
+      alive = false;
+    };
+  }, [src]);
+  return (
+    <>
+      {layers.previous && <div className="wallpaper" style={{ backgroundImage: cssUrl(layers.previous) }} aria-hidden />}
+      <div key={layers.current} className="wallpaper fade" style={{ backgroundImage: cssUrl(layers.current) }} aria-hidden />
+    </>
+  );
 }
 
 /** Downscale an image file and encode it as a JPEG data URL small enough for localStorage. */
@@ -124,6 +214,11 @@ export function AppearancePanel({
   const { appearance, setAppearance, custom, setCustom } = state;
   const [url, setUrl] = useState(appearance.url);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState(() =>
+    appearance.wallpaper === "custom" || appearance.wallpaper === "url"
+      ? CUSTOM_TAB
+      : (CATEGORIES.find((c) => c.items.some((p) => p.id === appearance.wallpaper))?.id ?? CATEGORIES[0].id),
+  );
   const panelRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const set = (patch: Partial<Appearance>) => setAppearance((a) => ({ ...a, ...patch }));
@@ -172,20 +267,23 @@ export function AppearancePanel({
     { id: "light", label: "浅色", icon: Sun },
     { id: "dark", label: "深色", icon: Moon },
   ];
-  const tile = (id: string, label: string, bg: string | null, onClick = () => set({ wallpaper: id })) => (
-    <button key={id} className={`wp-tile${appearance.wallpaper === id ? " on" : ""}`} onClick={onClick} title={label}>
-      <span className="wp-thumb" style={bg ? { backgroundImage: cssUrl(bg) } : undefined}>
-        {id === "none" && <ImageOff />}
-        {id === "custom" && !bg && <ImagePlus />}
-        {appearance.wallpaper === id && (
-          <span className="wp-check">
-            <Check />
-          </span>
-        )}
-      </span>
-      <span className="wp-label">{label}</span>
-    </button>
-  );
+  const tile = (id: string, label: string, thumb: string | null, onClick = () => set({ wallpaper: id })) => {
+    const on = appearance.wallpaper === id;
+    return (
+      <button key={id} className={`wp-tile${on ? " on" : ""}`} onClick={onClick} title={label} aria-pressed={on}>
+        <span className="wp-thumb">
+          {thumb ? <img src={thumb} alt="" loading="lazy" decoding="async" /> : <ImagePlus />}
+          <span className="wp-label">{label}</span>
+          {on && (
+            <span className="wp-check">
+              <Check />
+            </span>
+          )}
+        </span>
+      </button>
+    );
+  };
+  const category = CATEGORIES.find((c) => c.id === tab);
 
   return (
     <div className="appearance" ref={panelRef} role="dialog" aria-label="外观">
@@ -209,32 +307,52 @@ export function AppearancePanel({
         </div>
 
         <div className="appearance-section">
-          <div className="appearance-label">背景图片</div>
-          <div className="wp-grid">
-            {tile("none", "无", null)}
-            {WALLPAPERS.map((w) => tile(w.id, w.label, presetUrl(w.id)))}
-            {tile("custom", busy ? "处理中…" : custom ? "我的图片" : "上传图片", custom || null, () =>
-              custom && appearance.wallpaper !== "custom" ? set({ wallpaper: "custom" }) : fileRef.current?.click(),
+          <div className="appearance-label">
+            背景图片
+            {state.src && (
+              <button className="wp-off" onClick={() => set({ wallpaper: "none" })}>
+                <ImageOff /> 不使用背景
+              </button>
             )}
           </div>
-          <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => upload(e.target.files?.[0])} />
-          {custom && (
-            <button className="btn btn-ghost btn-sm wp-replace" onClick={() => fileRef.current?.click()} disabled={busy}>
-              <ImagePlus /> 换一张本地图片
-            </button>
+          <div className="wp-tabs" role="tablist">
+            {[...CATEGORIES, { id: CUSTOM_TAB, label: "自定义" }].map((c) => (
+              <button key={c.id} role="tab" aria-selected={tab === c.id} className={tab === c.id ? "on" : ""} onClick={() => setTab(c.id)}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          {category ? (
+            <div className="wp-grid">{category.items.map((p) => tile(p.id, p.label, p.thumb))}</div>
+          ) : (
+            <>
+              <div className="wp-grid">
+                {tile("custom", busy ? "处理中…" : custom ? "我的图片" : "上传图片", custom || null, () =>
+                  custom && appearance.wallpaper !== "custom" ? set({ wallpaper: "custom" }) : fileRef.current?.click(),
+                )}
+                {appearance.url && tile("url", "图片链接", appearance.url)}
+              </div>
+              <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => upload(e.target.files?.[0])} />
+              {custom && (
+                <button className="btn btn-ghost btn-sm wp-replace" onClick={() => fileRef.current?.click()} disabled={busy}>
+                  <ImagePlus /> 换一张本地图片
+                </button>
+              )}
+              <form
+                className="wp-url"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  applyUrl();
+                }}
+              >
+                <input className="input" placeholder="粘贴图片链接 https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
+                <button className={`btn btn-sm${appearance.wallpaper === "url" && appearance.url === url.trim() ? "" : " btn-primary"}`} type="submit">
+                  应用
+                </button>
+              </form>
+            </>
           )}
-          <form
-            className="wp-url"
-            onSubmit={(e) => {
-              e.preventDefault();
-              applyUrl();
-            }}
-          >
-            <input className="input" placeholder="或粘贴图片链接 https://…" value={url} onChange={(e) => setUrl(e.target.value)} />
-            <button className={`btn btn-sm${appearance.wallpaper === "url" && appearance.url === url.trim() ? "" : " btn-primary"}`} type="submit">
-              应用
-            </button>
-          </form>
         </div>
 
         {state.src && (
@@ -243,7 +361,7 @@ export function AppearancePanel({
               <span>
                 面板不透明度 <b>{appearance.opacity}%</b>
               </span>
-              <input type="range" min={30} max={100} value={appearance.opacity} onChange={(e) => set({ opacity: +e.target.value })} />
+              <input type="range" min={20} max={100} value={appearance.opacity} onChange={(e) => set({ opacity: +e.target.value })} />
             </label>
             <label className="wp-slider">
               <span>
@@ -257,7 +375,7 @@ export function AppearancePanel({
           </div>
         )}
 
-        <p className="appearance-note">外观设置只保存在当前浏览器中。</p>
+        <p className="appearance-note">外观设置只保存在当前浏览器中。风景照片来自 Unsplash。</p>
       </div>
     </div>
   );
