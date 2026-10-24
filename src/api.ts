@@ -14,6 +14,7 @@ export interface Mailbox {
   address: string;
   display_name: string;
   forward_to: string;
+  created_at: number;
 }
 
 export interface FolderCount {
@@ -22,6 +23,8 @@ export interface FolderCount {
   total: number;
   unread: number;
   starred: number;
+  /** Newest message (received or sent) in this mailbox/folder, epoch ms. */
+  last_at: number;
 }
 
 export interface Settings {

@@ -27,8 +27,21 @@ function isBlocked(sender: string, blocklist: string | undefined): boolean {
     .some((rule) => (rule.startsWith("@") ? from.endsWith(rule) : from === rule));
 }
 
+/**
+ * The parts of an Email Routing message FlareBox uses. Copies relayed by another Worker
+ * (see `Ingest` in index.ts) have no `forward`, so mailbox forwarding is skipped for them.
+ */
+export interface InboundMessage {
+  readonly from: string;
+  readonly to: string;
+  readonly raw: ReadableStream;
+  readonly rawSize: number;
+  setReject(reason: string): void;
+  forward?(rcptTo: string): Promise<unknown>;
+}
+
 /** Email Routing hands every message for a connected domain to this handler. */
-export async function handleInbound(message: ForwardableEmailMessage, env: Env): Promise<void> {
+export async function handleInbound(message: InboundMessage, env: Env): Promise<void> {
   await ensureSchema(env.DB);
 
   const recipient = normalizeEmail(message.to);
@@ -119,7 +132,7 @@ export async function handleInbound(message: ForwardableEmailMessage, env: Env):
     ...attachmentStmts,
   ]);
 
-  if (mailbox.forward_to) {
+  if (mailbox.forward_to && message.forward) {
     try {
       await message.forward(mailbox.forward_to);
     } catch (err) {

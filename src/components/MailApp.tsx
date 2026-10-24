@@ -457,6 +457,7 @@ export function MailApp({ onLogout }: { onLogout: () => void }) {
           key={draft.key}
           draft={draft}
           mailboxes={data.mailboxes}
+          domains={data.domains}
           onClose={() => setDraft(null)}
           onSent={() => {
             setDraft(null);

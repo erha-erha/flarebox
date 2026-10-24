@@ -1,3 +1,4 @@
+import { WorkerEntrypoint } from "cloudflare:workers";
 import { Hono, type Context } from "hono";
 import { getCookie } from "hono/cookie";
 import {
@@ -147,10 +148,10 @@ app.get("/bootstrap", async (c) => {
     db
       .prepare(
         `SELECT mailbox_id, folder, COUNT(*) AS total, SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) AS unread,
-                SUM(is_starred) AS starred
+                SUM(is_starred) AS starred, MAX(created_at) AS last_at
          FROM messages GROUP BY mailbox_id, folder`,
       )
-      .all<{ mailbox_id: number; folder: Folder; total: number; unread: number; starred: number }>(),
+      .all<{ mailbox_id: number; folder: Folder; total: number; unread: number; starred: number; last_at: number }>(),
     getSettings(db),
   ]);
   return c.json({
@@ -490,6 +491,24 @@ app.all("*", (c) => c.json({ error: "Not found" }, 404));
 // ---------------------------------------------------------------- handlers
 
 const TRASH_RETENTION_MS = 30 * 24 * 3600 * 1000;
+
+/**
+ * RPC entrypoint for another Email Worker that already owns a domain's catch-all (for example an
+ * OTP service): it relays a copy of each message here so the mail also shows up in FlareBox.
+ * Reachable only through a service binding with `entrypoint: "Ingest"`, never from the internet.
+ */
+export class Ingest extends WorkerEntrypoint<Env> {
+  async deliver(from: string, to: string, raw: ReadableStream, rawSize: number): Promise<{ stored: boolean; reason?: string }> {
+    let reason: string | undefined;
+    try {
+      await handleInbound({ from, to, raw, rawSize, setReject: (r) => (reason = r) }, this.env);
+    } finally {
+      // Rejected before parsing: release the sender's side of the stream.
+      raw.cancel().catch(() => {});
+    }
+    return reason ? { stored: false, reason } : { stored: true };
+  }
+}
 
 export default {
   fetch: app.fetch,

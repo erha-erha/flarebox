@@ -5,11 +5,25 @@
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/erha-erha/flarebox)
 
+![FlareBox 浅色主题：多域名统一收件箱与邮件阅读](docs/screenshots/desktop.png)
+
+<details open>
+<summary>深色主题、手机端</summary>
+
+![深色主题：按字母分组的邮箱列表与回复窗口](docs/screenshots/dark.png)
+
+![手机端：收件箱、读信、侧边栏（隐藏不活跃邮箱）](docs/screenshots/mobile.png)
+
+</details>
+
+> 截图为本地演示数据，邮箱地址和域名已打码。
+
 ## 特性
 
 - **一键接入域名**：连接 Cloudflare 后，在列表里点一下，自动完成 MX / SPF / DKIM、Catch-all 收信路由、发信域名开通
 - **任意地址即用**：发往 `*@你的域名` 的邮件自动收下并创建邮箱；也可以直接用任意地址发信
-- **完整收发**：HTML 邮件、附件、内嵌图片、回复 / 全部回复 / 转发（带附件）、抄送密送、签名
+- **完整收发**：HTML 邮件、附件、内嵌图片、回复 / 全部回复 / 转发（带附件）、抄送密送、签名；发件人前缀可手动输入，域名下拉选择
+- **邮箱多也好找**：几十上百个邮箱时可按 A–Z 字母分组（默认收起，点字母展开）；可隐藏 N 天无往来的不活跃邮箱，天数自定义
 - **精美界面**：三栏式邮件客户端，深色 / 浅色主题，手机自适应，快捷键（`C` 写信、`/` 搜索、`J`/`K` 切换、`E` 归档、`R` 回复）
 - **隐私安全**：邮件 HTML 在沙箱中渲染并剔除脚本，默认拦截远程追踪图片；黑名单拒收；登录限流
 - **两种发信方式**：Cloudflare Email Service 原生发信，或 Resend

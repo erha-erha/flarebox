@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from "react";
-import { api, type Mailbox } from "../api";
+import { api, type Domain, type Mailbox } from "../api";
 import { fileToBase64, formatSize } from "../utils";
 import { Spinner, useConfirm, useToast } from "./ui";
 
@@ -97,20 +97,33 @@ function RecipientInput({
   );
 }
 
+const LOCAL_PART_RE = /^[A-Za-z0-9._%+-]+$/;
+
+function splitAddress(address: string): [string, string] {
+  const at = address.lastIndexOf("@");
+  return at < 0 ? [address, ""] : [address.slice(0, at), address.slice(at + 1).toLowerCase()];
+}
+
 export function Composer({
   draft,
   mailboxes,
+  domains: domainList,
   onClose,
   onSent,
 }: {
   draft: Draft;
   mailboxes: Mailbox[];
+  domains: Domain[];
   onClose: () => void;
   onSent: () => void;
 }) {
   const notify = useToast();
   const confirm = useConfirm();
-  const [from, setFrom] = useState(draft.from || mailboxes[0]?.address || "");
+  const domainNames = domainList.map((d) => d.name);
+  const [initialLocal, initialDomain] = splitAddress(draft.from || mailboxes[0]?.address || "");
+  const [fromLocal, setFromLocal] = useState(initialLocal);
+  const [fromDomain, setFromDomain] = useState(domainNames.includes(initialDomain) ? initialDomain : domainNames[0] ?? "");
+  const from = `${fromLocal.trim()}@${fromDomain}`;
   const [to, setTo] = useState(draft.to);
   const [cc, setCc] = useState(draft.cc);
   const [bcc, setBcc] = useState(draft.bcc);
@@ -142,7 +155,17 @@ export function Composer({
   }, [draft]);
 
   const totalBytes = files.reduce((n, f) => n + f.size, 0) + fwd.reduce((n, f) => n + f.size, 0);
-  const domains = [...new Set(mailboxes.map((m) => m.address.split("@")[1]))];
+
+  // Picking a suggestion or pasting a full address fills both halves of the sender field.
+  const changeFromLocal = (value: string) => {
+    const [local, domain] = splitAddress(value.trim());
+    if (value.includes("@") && domainNames.includes(domain)) {
+      setFromLocal(local);
+      setFromDomain(domain);
+    } else {
+      setFromLocal(value.replace(/@.*$/, ""));
+    }
+  };
 
   const exec = (cmd: string, value?: string) => {
     editor.current?.focus();
@@ -172,7 +195,9 @@ export function Composer({
 
   const send = async () => {
     const all = [...to, ...cc, ...bcc];
-    if (!from) return notify("请先选择发件邮箱", "error");
+    if (!fromDomain) return notify("请先在设置里添加域名", "error");
+    if (!fromLocal.trim()) return notify("请填写发件人", "error");
+    if (!LOCAL_PART_RE.test(fromLocal.trim())) return notify("发件人只能包含字母、数字和 . _ + -", "error");
     if (all.length === 0) return notify("请填写收件人", "error");
     const bad = all.find((a) => !EMAIL_RE.test(a));
     if (bad) return notify(`收件人地址无效：${bad}`, "error");
@@ -252,23 +277,36 @@ export function Composer({
       <div className="composer-fields">
         <div className="cfield">
           <label>发件人</label>
-          {mailboxes.length ? (
-            <select className="bare" value={from} onChange={(e) => setFrom(e.target.value)}>
-              {domains.map((d) => (
-                <optgroup key={d} label={d}>
-                  {mailboxes
-                    .filter((m) => m.address.endsWith(`@${d}`))
-                    .map((m) => (
-                      <option key={m.id} value={m.address}>
-                        {m.display_name ? `${m.display_name} <${m.address}>` : m.address}
-                      </option>
-                    ))}
-                </optgroup>
-              ))}
-            </select>
+          {domainNames.length ? (
+            <div className="from-field">
+              <input
+                className="bare from-local"
+                list="composer-from-suggestions"
+                value={fromLocal}
+                onChange={(e) => changeFromLocal(e.target.value)}
+                placeholder="名字"
+                spellCheck={false}
+                autoComplete="off"
+              />
+              <datalist id="composer-from-suggestions">
+                {mailboxes.map((m) => (
+                  <option key={m.id} value={m.address}>
+                    {m.display_name}
+                  </option>
+                ))}
+              </datalist>
+              <span className="from-at">@</span>
+              <select className="bare from-domain" value={fromDomain} onChange={(e) => setFromDomain(e.target.value)}>
+                {domainNames.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
           ) : (
             <span className="muted" style={{ fontSize: 13 }}>
-              还没有邮箱，请先在侧边栏新建一个
+              还没有域名，请先在设置里添加
             </span>
           )}
         </div>
