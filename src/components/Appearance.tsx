@@ -8,7 +8,7 @@ export type Theme = "auto" | "light" | "dark";
 export interface Appearance {
   wallpaper: string;
   url: string;
-  /** opacity of the panes over the wallpaper, 20–100 (%) */
+  /** opacity of the panes over the wallpaper, 0–90 (%) */
   opacity: number;
   /** frosted-glass blur of the panes, 0–40 (px) */
   blur: number;
@@ -99,19 +99,27 @@ export const CATEGORIES: Category[] = [
 const PRESETS = new Map(CATEGORIES.flatMap((c) => c.items.map((p) => [p.id, p] as const)));
 const CUSTOM_TAB = "custom";
 
-const DEFAULT: Appearance = { wallpaper: "none", url: "", opacity: 62, blur: 16 };
-const KEY = "fb-appearance";
+const DEFAULT: Appearance = { wallpaper: "none", url: "", opacity: 30, blur: 6 };
+const KEY = "fb-appearance-v2";
+/** Earlier versions defaulted to much more opaque panes; only the chosen image carries over. */
+const LEGACY_KEY = "fb-appearance";
 const CUSTOM_KEY = "fb-wallpaper-custom";
 /** Longest edge of an uploaded image after downscaling. */
 const MAX_EDGE = 2560;
 
-function load<T>(key: string, fallback: T): T {
+function loadAppearance(): Appearance {
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? { ...fallback, ...JSON.parse(raw) } : fallback;
+    const raw = localStorage.getItem(KEY);
+    if (raw) return { ...DEFAULT, ...JSON.parse(raw) };
+    const legacy = localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const { wallpaper, url } = JSON.parse(legacy) as Partial<Appearance>;
+      return { ...DEFAULT, wallpaper: wallpaper ?? DEFAULT.wallpaper, url: url ?? "" };
+    }
   } catch {
-    return fallback;
+    /* storage unavailable or corrupt */
   }
+  return DEFAULT;
 }
 
 function loadCustom(): string {
@@ -125,7 +133,7 @@ function loadCustom(): string {
 const cssUrl = (src: string) => `url("${src.replace(/["\\]/g, "\\$&").replace(/[\r\n]/g, "")}")`;
 
 export function useAppearance() {
-  const [appearance, setAppearance] = useState<Appearance>(() => load(KEY, DEFAULT));
+  const [appearance, setAppearance] = useState<Appearance>(loadAppearance);
   const [custom, setCustomState] = useState(loadCustom);
 
   useEffect(() => {
@@ -361,7 +369,7 @@ export function AppearancePanel({
               <span>
                 面板不透明度 <b>{appearance.opacity}%</b>
               </span>
-              <input type="range" min={20} max={100} value={appearance.opacity} onChange={(e) => set({ opacity: +e.target.value })} />
+              <input type="range" min={0} max={90} value={appearance.opacity} onChange={(e) => set({ opacity: +e.target.value })} />
             </label>
             <label className="wp-slider">
               <span>
