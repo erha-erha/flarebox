@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type Attachment, type Bootstrap, type Mailbox, type MessageDetail, type MessageSummary, type View } from "../api";
 import { displayName, formatFullTime, parseAddresses, quoteHeader, textToHtml } from "../utils";
+import { AppearancePanel, useAppearance, Wallpaper, type Theme } from "./Appearance";
 import { Composer, type Draft } from "./Composer";
 import { MessageList, type MessageAction } from "./MessageList";
 import { NewMailboxModal } from "./NewMailbox";
 import { Reader, type ReplyMode } from "./Reader";
 import { SettingsPanel, type SettingsTab } from "./Settings";
-import { Sidebar, type Theme } from "./Sidebar";
+import { Sidebar } from "./Sidebar";
 import { Modal, Spinner, useConfirm, useToast } from "./ui";
 import { NothingSelected, Welcome } from "./Welcome";
 
@@ -65,6 +66,8 @@ export function MailApp({ onLogout }: { onLogout: () => void }) {
   const notify = useToast();
   const confirm = useConfirm();
   const [theme, setTheme] = useTheme();
+  const appearance = useAppearance();
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [data, setData] = useState<Bootstrap | null>(null);
   const [view, setView] = useState<View>("inbox");
   const [mailbox, setMailbox] = useState<number | "all">("all");
@@ -315,7 +318,7 @@ export function MailApp({ onLogout }: { onLogout: () => void }) {
       const target = e.target as HTMLElement;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (target.closest("input, textarea, select, [contenteditable='true']")) return;
-      if (document.querySelector(".overlay")) return;
+      if (document.querySelector(".overlay, .appearance")) return;
       const list = messagesRef.current;
       const idx = list.findIndex((m) => m.id === selected);
       const detail = detailRef.current?.message.id === selected ? detailRef.current : null;
@@ -387,7 +390,11 @@ export function MailApp({ onLogout }: { onLogout: () => void }) {
   const currentBox = mailbox === "all" ? null : mailboxMap.get(mailbox);
 
   return (
-    <div className={`app${drawer ? " drawer-open" : ""}${selected ? " reading" : ""}`}>
+    <div
+      className={`app${drawer ? " drawer-open" : ""}${selected ? " reading" : ""}${appearance.src ? " has-wallpaper" : ""}`}
+      style={appearance.style}
+    >
+      {appearance.src && <Wallpaper src={appearance.src} />}
       <div className="drawer-backdrop" onClick={() => setDrawer(false)} />
       <Sidebar
         data={data}
@@ -402,9 +409,13 @@ export function MailApp({ onLogout }: { onLogout: () => void }) {
           onLogout();
         }}
         onClose={() => setDrawer(false)}
-        theme={theme}
-        onTheme={setTheme}
+        appearanceOpen={appearanceOpen}
+        onAppearance={() => setAppearanceOpen((o) => !o)}
       />
+
+      {appearanceOpen && (
+        <AppearancePanel theme={theme} onTheme={setTheme} state={appearance} onClose={() => setAppearanceOpen(false)} />
+      )}
 
       <MessageList
         ref={searchRef}

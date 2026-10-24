@@ -1971,6 +1971,339 @@ details.adv > div {
   pointer-events: none;
 }
 
+/* ---------- wallpaper */
+.wallpaper {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg) center / cover no-repeat;
+  pointer-events: none;
+}
+.wallpaper.fade {
+  animation: fade-in 0.5s ease;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.app.has-wallpaper {
+  /* translucent hovers so the glass panes stay see-through */
+  --surface-hover: color-mix(in srgb, var(--text) 8%, transparent);
+  --surface-active: color-mix(in srgb, var(--accent) 18%, transparent);
+  --surface-2: color-mix(in srgb, var(--surface) 55%, transparent);
+  /* stronger secondary text and a soft halo keep text legible over a busy photo */
+  --text-2: #2e2b27;
+  --text-3: #4d4842;
+  --glass-halo: rgba(255, 255, 255, 0.9);
+}
+:root[data-theme="dark"] .app.has-wallpaper {
+  --text-2: #e6e3de;
+  --text-3: #c4bfb7;
+  --glass-halo: rgba(0, 0, 0, 0.85);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .app.has-wallpaper {
+    --text-2: #e6e3de;
+    --text-3: #c4bfb7;
+    --glass-halo: rgba(0, 0, 0, 0.85);
+  }
+}
+.app.has-wallpaper .sidebar,
+.app.has-wallpaper .list-pane,
+.app.has-wallpaper .reader-pane {
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  text-shadow:
+    0 0 1px var(--glass-halo),
+    0 0 4px var(--glass-halo),
+    0 0 10px var(--glass-halo);
+}
+.app.has-wallpaper .sidebar {
+  background: color-mix(in srgb, var(--bg-sidebar) var(--pane-alpha), transparent);
+}
+.app.has-wallpaper .list-pane {
+  background: color-mix(in srgb, var(--surface) calc(var(--pane-alpha) + 8%), transparent);
+}
+.app.has-wallpaper .reader-pane {
+  background: color-mix(in srgb, var(--bg) calc(var(--pane-alpha) + 8%), transparent);
+}
+.app.has-wallpaper .btn-primary,
+.app.has-wallpaper .count,
+.app.has-wallpaper .avatar,
+.app.has-wallpaper .mail-body {
+  text-shadow: none;
+}
+.app.has-wallpaper .reader-toolbar {
+  background: transparent;
+  backdrop-filter: none;
+}
+.app.has-wallpaper .sidebar-foot {
+  border-top-color: color-mix(in srgb, var(--text) 10%, transparent);
+}
+/* nothing open: let the scenery show through untouched, with a small hint pill */
+.app.has-wallpaper .reader-pane:has(> .empty) {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.app.has-wallpaper .reader-pane > .empty {
+  height: auto;
+  min-height: 0;
+  margin: auto auto 28px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-sm);
+}
+.app.has-wallpaper .reader-pane > .empty h3 {
+  font-size: 13.5px;
+}
+.app.has-wallpaper .reader-pane > .empty .empty-icon,
+.app.has-wallpaper .reader-pane > .empty p {
+  display: none;
+}
+
+/* ---------- appearance popover */
+.appearance {
+  position: fixed;
+  left: 12px;
+  bottom: 64px;
+  z-index: 60;
+  width: min(384px, calc(100vw - 24px));
+  max-height: calc(100dvh - 88px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg);
+  animation: rise 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+  transform-origin: bottom left;
+  color: var(--text);
+}
+.appearance-head {
+  display: flex;
+  align-items: center;
+  padding: 14px 14px 4px 18px;
+}
+.appearance-head h3 {
+  margin: 0;
+  flex: 1;
+  font-size: 16px;
+}
+.appearance-body {
+  padding: 6px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+}
+.appearance-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.appearance-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 22px;
+}
+.wp-off {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  padding: 2px 4px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text-3);
+}
+.wp-off:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+.wp-off svg {
+  width: 14px;
+  height: 14px;
+}
+.wp-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.wp-tabs button {
+  flex: none;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+}
+.wp-tabs button:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.wp-tabs button.on {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--surface);
+}
+.appearance-themes {
+  display: flex;
+}
+.appearance-themes button {
+  flex: 1;
+  justify-content: center;
+  padding: 0 8px;
+}
+.wp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.wp-tile {
+  border: none;
+  background: none;
+  padding: 0;
+  min-width: 0;
+  border-radius: 11px;
+}
+.wp-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 3 / 2;
+  border-radius: 11px;
+  overflow: hidden;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  transition:
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.wp-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wp-thumb > svg {
+  width: 20px;
+  height: 20px;
+  margin-bottom: 14px;
+}
+.wp-tile:hover .wp-thumb {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.wp-tile.on .wp-thumb {
+  border-color: transparent;
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--accent);
+}
+.wp-label {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 14px 8px 5px;
+  font-size: 12px;
+  font-weight: 650;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #fff;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.wp-thumb:not(:has(img)) .wp-label {
+  color: var(--text-2);
+  background: none;
+  text-shadow: none;
+  text-align: center;
+}
+.wp-check {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.wp-check svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 3;
+}
+.wp-replace {
+  align-self: flex-start;
+}
+.wp-url {
+  display: flex;
+  gap: 6px;
+}
+.wp-url .input {
+  height: 34px;
+  font-size: 13px;
+}
+.wp-url .btn {
+  height: 34px;
+}
+.wp-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.wp-slider span {
+  display: flex;
+  justify-content: space-between;
+}
+.wp-slider b {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.wp-slider input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.appearance-section > .btn-ghost {
+  align-self: flex-start;
+}
+.appearance-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
 /* ---------- toasts */
 .toasts {
   position: fixed;

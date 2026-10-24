@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+<rect width="1920" height="1080" fill="#fbe9df"/>
+<radialGradient id="b200150" cx="200" cy="150" r="900" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffb38a" stop-opacity="0.9"/><stop offset="1" stop-color="#ffb38a" stop-opacity="0"/></radialGradient><rect width="1920" height="1080" fill="url(#b200150)"/>
+<radialGradient id="b1700120" cx="1700" cy="120" r="900" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#c9b6ff" stop-opacity="0.85"/><stop offset="1" stop-color="#c9b6ff" stop-opacity="0"/></radialGradient><rect width="1920" height="1080" fill="url(#b1700120)"/>
+<radialGradient id="b1500950" cx="1500" cy="950" r="900" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff9ec4" stop-opacity="0.8"/><stop offset="1" stop-color="#ff9ec4" stop-opacity="0"/></radialGradient><rect width="1920" height="1080" fill="url(#b1500950)"/>
+<radialGradient id="b3001000" cx="300" cy="1000" r="800" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#9fe3e0" stop-opacity="0.75"/><stop offset="1" stop-color="#9fe3e0" stop-opacity="0"/></radialGradient><rect width="1920" height="1080" fill="url(#b3001000)"/>
+<radialGradient id="b960540" cx="960" cy="540" r="600" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff3d6" stop-opacity="0.7"/><stop offset="1" stop-color="#fff3d6" stop-opacity="0"/></radialGradient><rect width="1920" height="1080" fill="url(#b960540)"/></svg>
