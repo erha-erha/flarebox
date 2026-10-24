@@ -1,9 +1,7 @@
-import { Archive, Globe, Inbox, LogOut, Mail, MailOpen, Moon, Plus, Send, Settings, SquarePen, Star, Sun, SunMoon, Trash2, X } from "lucide-react";
+import { Archive, Globe, Inbox, LogOut, Mail, MailOpen, Palette, Plus, Send, Settings, SquarePen, Star, Trash2, X } from "lucide-react";
 import type { Bootstrap, View } from "../api";
 import { avatarStyle } from "../utils";
 import { LogoMark } from "./ui";
-
-export type Theme = "auto" | "light" | "dark";
 
 const NAV: { view: View; label: string; icon: typeof Inbox }[] = [
   { view: "inbox", label: "收件箱", icon: Inbox },
@@ -24,8 +22,8 @@ export function Sidebar({
   onNewMailbox,
   onLogout,
   onClose,
-  theme,
-  onTheme,
+  appearanceOpen,
+  onAppearance,
 }: {
   data: Bootstrap;
   view: View;
@@ -36,8 +34,8 @@ export function Sidebar({
   onNewMailbox: () => void;
   onLogout: () => void;
   onClose: () => void;
-  theme: Theme;
-  onTheme: (t: Theme) => void;
+  appearanceOpen: boolean;
+  onAppearance: () => void;
 }) {
   const scoped = data.counts.filter((c) => mailbox === "all" || c.mailbox_id === mailbox);
   const inboxUnread = scoped.filter((c) => c.folder === "inbox").reduce((n, c) => n + c.unread, 0);
@@ -64,10 +62,6 @@ export function Sidebar({
     const d = m.address.split("@")[1];
     byDomain.set(d, [...(byDomain.get(d) ?? []), m]);
   }
-
-  const nextTheme: Record<Theme, Theme> = { auto: "light", light: "dark", dark: "auto" };
-  const themeIcon = theme === "auto" ? <SunMoon /> : theme === "light" ? <Sun /> : <Moon />;
-  const themeLabel = { auto: "跟随系统", light: "浅色", dark: "深色" }[theme];
 
   return (
     <aside className="sidebar">
@@ -149,8 +143,14 @@ export function Sidebar({
           <Settings />
           <span className="label">设置</span>
         </button>
-        <button className="icon-btn" onClick={() => onTheme(nextTheme[theme])} title={`主题：${themeLabel}`} aria-label="切换主题">
-          {themeIcon}
+        <button
+          className={`nav-item appearance-toggle${appearanceOpen ? " active" : ""}`}
+          onClick={onAppearance}
+          aria-expanded={appearanceOpen}
+          title="外观：主题与背景图片"
+        >
+          <Palette />
+          <span className="label">外观</span>
         </button>
         <button className="icon-btn" onClick={onLogout} title="退出登录" aria-label="退出登录">
           <LogOut />
