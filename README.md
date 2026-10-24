@@ -8,9 +8,11 @@
 ![FlareBox 浅色主题：多域名统一收件箱与邮件阅读](docs/screenshots/desktop.png)
 
 <details open>
-<summary>深色主题、手机端</summary>
+<summary>深色主题、背景图片、手机端</summary>
 
-![深色主题：按字母分组的邮箱列表与回复窗口](docs/screenshots/dark.png)
+![深色主题 + 星空背景：按字母分组的邮箱列表与回复窗口](docs/screenshots/dark.webp)
+
+![外观面板：主题与风景背景图片，毛玻璃透明度可调](docs/screenshots/appearance.webp)
 
 ![手机端：收件箱、读信、侧边栏（隐藏不活跃邮箱）](docs/screenshots/mobile.png)
 
