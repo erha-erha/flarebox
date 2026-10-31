@@ -85,6 +85,13 @@ export interface Attachment {
   inline: number;
 }
 
+export interface BypassRule {
+  tag: string;
+  address: string;
+  target: string;
+  forwardTo: string;
+}
+
 export interface ZoneInfo {
   id: string;
   name: string;
@@ -93,6 +100,7 @@ export interface ZoneInfo {
   added: boolean;
   routing: { enabled: boolean; status: string } | { error: string };
   catchAll: { toThisWorker: boolean; description: string } | { error: string };
+  bypass: { rules: BypassRule[] } | { error: string };
   sending: { enabled: boolean } | { error: string };
 }
 
@@ -181,6 +189,8 @@ export const api = {
   cfSaveToken: (token: string) => request<{ ok: true; zones: number }>("POST", "/cf/token", { token }),
   cfDisconnect: () => request<{ ok: true }>("DELETE", "/cf/token"),
   cfZones: () => request<{ worker: string; zones: ZoneInfo[] }>("GET", "/cf/zones"),
+  cfTakeOverRules: (zoneId: string, tags: string[]) =>
+    request<{ moved: number; failed: { tag: string; error: string }[] }>("POST", `/cf/zones/${zoneId}/rules/takeover`, { tags }),
   cfConnect: (zoneId: string) =>
     request<{ steps: ConnectStep[]; receiving: boolean; sending: boolean }>("POST", `/cf/zones/${zoneId}/connect`, {}),
 };

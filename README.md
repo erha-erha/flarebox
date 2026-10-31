@@ -68,6 +68,8 @@ npm run setup -- --domain mail.example.com
 令牌所需权限：区域 Zone 读取、区域设置 Zone Settings 编辑、DNS 编辑、电子邮件路由规则 Email Routing Rules 编辑、（可选）电子邮件发送 Email Sending 编辑。
 如果预填链接没有勾上某项权限，手动添加即可。
 
+> Cloudflare 上为单个地址设置的路由规则优先于 Catch-all，这些地址的邮件不会进入 FlareBox。「设置 → 域名」会列出这些地址，可以一键接管；原来的转发目标会保留为该邮箱的转发地址。
+
 不想授权令牌？可以在 Cloudflare 控制台的 Email Routing 中把 Catch-all 设为「发送到 Worker：flarebox」，再在「设置 → 域名 → 高级」中手动添加域名。
 
 ## 发信

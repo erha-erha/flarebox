@@ -1,6 +1,6 @@
 import { Check, CircleAlert, CircleCheck, Cloud, ExternalLink, KeyRound, RefreshCw, Zap } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { api, type ConnectStep, type Settings, type ZoneInfo } from "../api";
+import { api, type BypassRule, type ConnectStep, type Settings, type ZoneInfo } from "../api";
 import { Spinner, useConfirm, useToast } from "./ui";
 
 const PERMISSIONS = [
@@ -148,6 +148,27 @@ export function CloudflareConnect({ settings, onChanged }: { settings: Settings;
     }
   };
 
+  const takeOver = async (z: ZoneInfo, rules: BypassRule[]) => {
+    const ok = await confirm({
+      title: `让 ${rules.length} 个地址进入 FlareBox？`,
+      confirm: "接管",
+      body: "这些地址的 Cloudflare 规则会改为发送到 FlareBox。原来转发到的邮箱会保留为该邮箱的转发地址，继续收到副本；原来发送到其它 Worker 或丢弃的，将不再走原处理方式。",
+    });
+    if (!ok) return;
+    setBusyZone(z.id);
+    try {
+      const r = await api.cfTakeOverRules(z.id, rules.map((rule) => rule.tag));
+      if (r.failed.length) notify(`已接管 ${r.moved} 个，${r.failed.length} 个失败：${r.failed[0].error}`, "error");
+      else notify(`已接管 ${r.moved} 个地址`, "success");
+      onChanged();
+      loadZones();
+    } catch (e) {
+      notify((e as Error).message, "error");
+    } finally {
+      setBusyZone(null);
+    }
+  };
+
   if (!settings.cf_connected) {
     return (
       <div className="hero-connect">
@@ -252,6 +273,7 @@ export function CloudflareConnect({ settings, onChanged }: { settings: Settings;
             const receivingOk = "toThisWorker" in z.catchAll && z.catchAll.toThisWorker && "enabled" in z.routing && z.routing.enabled;
             const sendingOk = "enabled" in z.sending && z.sending.enabled;
             const fullyConnected = receivingOk && sendingOk && z.added;
+            const bypass = "rules" in z.bypass ? z.bypass.rules : [];
             return (
               <div key={z.id} style={{ borderTop: "1px solid var(--border)" }}>
                 <div className="list-row" style={{ borderTop: "none" }}>
@@ -278,6 +300,27 @@ export function CloudflareConnect({ settings, onChanged }: { settings: Settings;
                     </button>
                   )}
                 </div>
+                {bypass.length > 0 && (
+                  <div className="callout warn" style={{ margin: "0 16px 14px" }}>
+                    <CircleAlert />
+                    <div className="grow">
+                      <div>
+                        有 <strong>{bypass.length}</strong> 个地址的单独规则优先于 Catch-all，它们的邮件<strong>不会进入 FlareBox</strong>。
+                      </div>
+                      <details style={{ margin: "6px 0" }}>
+                        <summary>查看地址</summary>
+                        {bypass.map((rule) => (
+                          <div key={rule.tag} className="mono" style={{ fontSize: 12 }}>
+                            {rule.address} → {rule.target}
+                          </div>
+                        ))}
+                      </details>
+                      <button className="btn btn-sm" onClick={() => takeOver(z, bypass)} disabled={busyZone !== null || !z.added} title={z.added ? undefined : "请先添加这个域名"}>
+                        {busyZone === z.id ? <Spinner size={14} /> : <Zap />} 全部接管到 FlareBox
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {results[z.id] && (
                   <div className="connect-steps" style={{ padding: "0 16px 14px" }}>
                     {results[z.id].map((s) => (

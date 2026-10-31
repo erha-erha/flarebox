@@ -81,12 +81,30 @@ interface SendingSubdomain {
   tag: string;
 }
 
+interface RoutingRule {
+  tag: string;
+  name?: string;
+  enabled: boolean;
+  priority?: number;
+  matchers: { type: string; field?: string; value?: string }[];
+  actions: { type: string; value?: string[] }[];
+}
+
+/** An address-specific rule that wins over the catch-all and keeps mail away from this Worker. */
+export interface BypassRule {
+  tag: string;
+  address: string;
+  target: string;
+  forwardTo: string;
+}
+
 export interface ZoneStatus {
   zoneId: string;
   name: string;
   routing: { enabled: boolean; status: string } | { error: string };
   catchAll: { toThisWorker: boolean; description: string } | { error: string };
   sending: { enabled: boolean } | { error: string };
+  bypass: { rules: BypassRule[] } | { error: string };
 }
 
 function describeCatchAll(rule: CatchAllRule): string {
@@ -99,12 +117,44 @@ function describeCatchAll(rule: CatchAllRule): string {
   return action.type;
 }
 
+function ruleAddress(rule: RoutingRule): string | null {
+  const matcher = rule.matchers?.find((m) => m.type === "literal" && m.field === "to");
+  return matcher?.value ? matcher.value.toLowerCase() : null;
+}
+
+function isThisWorker(rule: { actions: { type: string; value?: string[] }[] }, workerName: string): boolean {
+  return rule.actions.some((a) => a.type === "worker" && a.value?.[0] === workerName);
+}
+
+async function listRules(token: string, zoneId: string): Promise<RoutingRule[]> {
+  const rules: RoutingRule[] = [];
+  for (let page = 1; page <= 20; page++) {
+    const data = await cfRaw<RoutingRule[]>(token, `/zones/${zoneId}/email/routing/rules?per_page=50&page=${page}`);
+    rules.push(...data.result);
+    if (!data.result_info || page >= data.result_info.total_pages) break;
+  }
+  return rules;
+}
+
+function toBypass(rule: RoutingRule, workerName: string): BypassRule | null {
+  const address = ruleAddress(rule);
+  if (!address || !rule.enabled || isThisWorker(rule, workerName)) return null;
+  const action = rule.actions[0];
+  return {
+    tag: rule.tag,
+    address,
+    target: describeCatchAll(rule),
+    forwardTo: action?.type === "forward" ? (action.value?.[0] ?? "") : "",
+  };
+}
+
 export async function zoneStatus(token: string, zone: { id: string; name: string }, workerName: string): Promise<ZoneStatus> {
   const id = encodeURIComponent(zone.id);
-  const [routing, catchAll, sending] = await Promise.allSettled([
+  const [routing, catchAll, sending, rules] = await Promise.allSettled([
     cf<RoutingSettings>(token, `/zones/${id}/email/routing`),
     cf<CatchAllRule>(token, `/zones/${id}/email/routing/rules/catch_all`),
     cf<SendingSubdomain[]>(token, `/zones/${id}/email/sending/subdomains`),
+    listRules(token, id),
   ]);
   const err = (r: PromiseRejectedResult) => ({ error: (r.reason as Error).message });
   return {
@@ -128,6 +178,10 @@ export async function zoneStatus(token: string, zone: { id: string; name: string
       sending.status === "fulfilled"
         ? { enabled: sending.value.some((s) => s.name === zone.name && s.enabled) }
         : err(sending),
+    bypass:
+      rules.status === "fulfilled"
+        ? { rules: rules.value.map((r) => toBypass(r, workerName)).filter((r): r is BypassRule => !!r) }
+        : err(rules),
   };
 }
 
@@ -201,6 +255,25 @@ export async function connectZone(
   }
 
   return { steps, receiving: routingOk && catchAllOk, sending: sendingOk };
+}
+
+/**
+ * Points an address-specific rule at this Worker. The rule's old forward target is returned so the
+ * caller can keep it as the mailbox's forward_to and the destination goes on receiving a copy.
+ */
+export async function takeOverRule(token: string, zoneId: string, tag: string, workerName: string): Promise<BypassRule | null> {
+  const path = `/zones/${encodeURIComponent(zoneId)}/email/routing/rules/${encodeURIComponent(tag)}`;
+  const rule = await cf<RoutingRule>(token, path);
+  const bypass = toBypass(rule, workerName);
+  if (!bypass) return null;
+  await cf(token, path, "PUT", {
+    name: rule.name ?? "",
+    enabled: true,
+    priority: rule.priority,
+    matchers: rule.matchers,
+    actions: [{ type: "worker", value: [workerName] }],
+  });
+  return bypass;
 }
 
 /**

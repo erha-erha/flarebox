@@ -15,12 +15,13 @@ import {
   sessionCookie,
   validateSession,
 } from "./auth";
-import { CfApiError, connectZone, disconnectZone, getZone, listZones, tokenTemplateUrl, zoneStatus } from "./cloudflare";
+import { CfApiError, connectZone, disconnectZone, getZone, listZones, takeOverRule, tokenTemplateUrl, zoneStatus } from "./cloudflare";
 import {
   createMailbox,
   deleteSetting,
   ensureSchema,
   findDomain,
+  findMailbox,
   FOLDERS,
   getSetting,
   getSettings,
@@ -484,6 +485,34 @@ app.post("/cf/zones/:zoneId/connect", async (c) => {
       .run();
   }
   return c.json(result);
+});
+
+// Moves address-specific routing rules onto this Worker. Each rule is handled on its own, so one
+// failure leaves the others done; the old forward target lives on as the mailbox's forward_to.
+app.post("/cf/zones/:zoneId/rules/takeover", async (c) => {
+  const { tags } = await body<{ tags: string[] }>(c);
+  if (!Array.isArray(tags) || !tags.length || tags.length > 200) throw new HttpError(400, "参数错误");
+  const token = await requireToken(c);
+  const zone = await getZone(token, c.req.param("zoneId"));
+  // Mail for a domain FlareBox does not know about is rejected, which would be worse than the old rule.
+  if (!(await findDomain(c.env.DB, zone.name))) throw new HttpError(400, `请先把 ${zone.name} 添加到 FlareBox`);
+  const worker = await workerName(c.env);
+  const failed: { tag: string; error: string }[] = [];
+  let moved = 0;
+  for (const tag of tags.map(String)) {
+    try {
+      const rule = await takeOverRule(token, zone.id, tag, worker);
+      if (!rule) continue;
+      moved++;
+      const mailbox = (await findMailbox(c.env.DB, rule.address)) ?? (await createMailbox(c.env.DB, rule.address));
+      if (rule.forwardTo && !mailbox.forward_to) {
+        await c.env.DB.prepare("UPDATE mailboxes SET forward_to = ? WHERE id = ?").bind(rule.forwardTo, mailbox.id).run();
+      }
+    } catch (e) {
+      failed.push({ tag, error: (e as Error).message });
+    }
+  }
+  return c.json({ moved, failed });
 });
 
 app.all("*", (c) => c.json({ error: "Not found" }, 404));
