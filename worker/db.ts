@@ -210,6 +210,13 @@ export async function findDomain(db: D1Database, name: string): Promise<DomainRo
   return db.prepare("SELECT * FROM domains WHERE name = ?").bind(name).first<DomainRow>();
 }
 
+export async function ensureDomain(db: D1Database, name: string): Promise<void> {
+  await db
+    .prepare("INSERT INTO domains (name, receiving, sending, created_at) VALUES (?, 1, 0, ?) ON CONFLICT(name) DO NOTHING")
+    .bind(name, Date.now())
+    .run();
+}
+
 export async function createMailbox(
   db: D1Database,
   address: string,

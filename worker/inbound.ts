@@ -1,5 +1,5 @@
 import PostalMime from "postal-mime";
-import { createMailbox, ensureSchema, findDomain, findMailbox, getSettings, MAX_INLINE_BODY } from "./db";
+import { createMailbox, ensureDomain, ensureSchema, findMailbox, getSettings, MAX_INLINE_BODY } from "./db";
 import { hasR2, putBlob } from "./storage";
 import { domainOf, htmlToText, makeSnippet, newId, normalizeEmail, stripSubaddress } from "./util";
 
@@ -45,11 +45,13 @@ export async function handleInbound(message: InboundMessage, env: Env): Promise<
   await ensureSchema(env.DB);
 
   const recipient = normalizeEmail(message.to);
-  const domain = await findDomain(env.DB, domainOf(recipient));
-  if (!domain) {
-    message.setReject("Recipient domain is not managed by this server");
+  const domainName = domainOf(recipient);
+  if (!domainName) {
+    message.setReject("Invalid recipient");
     return;
   }
+  // Only routing the owner set up can get mail here, so any domain that arrives is theirs.
+  await ensureDomain(env.DB, domainName);
 
   const settings = await getSettings(env.DB);
   if (isBlocked(message.from, settings.blocked_senders)) {
